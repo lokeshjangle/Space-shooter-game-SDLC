@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Smartstream Space Shooter</title>
+    <title>CodeBlast Space Shooter</title>
     <style>
         body {
             margin: 0;
@@ -138,7 +138,7 @@
         </div>
         
         <div id="startScreen">
-            <div class="screen-title">SMARTSTREAM</div>
+            <div class="screen-title">CODEBLAST</div>
             <div class="screen-subtitle">Space Shooter</div>
             <div class="controls">
                 <span class="desktop-controls">← → Arrow Keys: Move</span>
@@ -412,13 +412,14 @@
             bossVerticalDirection = 1;
         }
         
-        function createPowerup(x, y) {
+        function createPowerup(x, y, isHealthPowerup = false) {
             powerups.push({
                 x: x,
                 y: y,
                 width: 30,
                 height: 30,
-                speed: 2
+                speed: 2,
+                isHealthPowerup: isHealthPowerup
             });
         }
         
@@ -786,7 +787,7 @@
             // P1 spawn timer
             if (!boss) {
                 p1SpawnTimer += deltaTime;
-                if (p1SpawnTimer >= 5000) {
+                if (p1SpawnTimer >= 12000) {
                     createEnemy(true);
                     p1SpawnTimer = 0;
                 }
@@ -848,7 +849,12 @@
                 
                 // Check collision with player
                 if (checkCollision(powerup, player)) {
-                    player.firepower = Math.min(player.firepower + 1, 3);
+                    if (powerup.isHealthPowerup) {
+                        player.health = Math.min(player.health + 1, player.maxHealth);
+                        document.getElementById('health').textContent = player.health;
+                    } else {
+                        player.firepower = Math.min(player.firepower + 1, 3);
+                    }
                     playSound('powerup');
                     return false;
                 }
@@ -897,15 +903,13 @@
                         // P1 bug special reward
                         if (enemy.type === 'bug' && enemy.priority === 'P1') {
                             createFireworks(enemy.x + enemy.width/2, enemy.y + enemy.height/2);
-                            player.health = Math.min(player.health + 1, player.maxHealth);
-                            document.getElementById('health').textContent = player.health;
                             shootInterval = Math.max(150, shootInterval - 50);
-                            createPowerup(enemy.x, enemy.y);
+                            createPowerup(enemy.x, enemy.y, true);
                             score += 50;
                         } else {
                             score += 10;
                             if (Math.random() < 0.05) {
-                                createPowerup(enemy.x, enemy.y);
+                                createPowerup(enemy.x, enemy.y, false);
                             }
                         }
                         

@@ -1,4 +1,4 @@
-# 🚀 Smartstream Space Shooter
+# 🚀 CodeBlast Space Shooter
 
 A browser-based space shooter game where you play as a developer battling bugs, requirements, and escalations, culminating in an epic boss fight against the Deadline Boss!
 
