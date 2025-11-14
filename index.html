@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Smartstream Space Shooter</title>
     <style>
         body {
@@ -16,11 +16,14 @@
             align-items: center;
             min-height: 100vh;
             overflow: hidden;
+            touch-action: none;
         }
         
         #gameContainer {
             position: relative;
             box-shadow: 0 0 30px rgba(0, 255, 255, 0.5);
+            max-width: 100vw;
+            max-height: 100vh;
         }
         
         canvas {
@@ -35,6 +38,30 @@
             font-size: 20px;
             z-index: 10;
             text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+        }
+        
+        @media (max-width: 768px) {
+            #ui {
+                font-size: 14px;
+                top: 10px;
+                left: 10px;
+            }
+            .ui-item {
+                margin: 4px 0;
+            }
+            .screen-title {
+                font-size: 32px !important;
+            }
+            .screen-subtitle {
+                font-size: 18px !important;
+            }
+            .controls {
+                font-size: 14px !important;
+            }
+            button {
+                padding: 12px 24px !important;
+                font-size: 16px !important;
+            }
         }
         
         .ui-item {
@@ -69,6 +96,7 @@
             margin: 15px 0;
             text-align: center;
             color: #fff;
+            padding: 0 20px;
         }
         
         .controls {
@@ -113,9 +141,10 @@
             <div class="screen-title">SMARTSTREAM</div>
             <div class="screen-subtitle">Space Shooter</div>
             <div class="controls">
-                ← → Arrow Keys: Move<br>
+                <span class="desktop-controls">← → Arrow Keys: Move</span>
+                <span class="mobile-controls" style="display:none;">Touch & Drag to Move</span><br>
                 Auto-Shooting Enabled<br>
-                Survive 30 seconds and defeat the boss!
+                Survive 60 seconds and defeat the boss!
             </div>
             <button onclick="startGame()">START DEPLOYMENT</button>
         </div>
@@ -136,8 +165,47 @@
     </div>
 
     <script>
+        // Responsive canvas setup
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
+        
+        function resizeCanvas() {
+            const maxWidth = window.innerWidth;
+            const maxHeight = window.innerHeight;
+            const isMobileView = maxWidth < 768;
+            
+            let width, height;
+            
+            if (isMobileView) {
+                // Mobile: 9:16 aspect ratio, full screen
+                width = maxWidth;
+                height = maxHeight;
+            } else {
+                // Desktop: 900x700
+                const aspectRatio = 900 / 700;
+                if (maxWidth >= 900 && maxHeight >= 700) {
+                    width = 900;
+                    height = 700;
+                } else {
+                    if (maxWidth / maxHeight > aspectRatio) {
+                        height = maxHeight;
+                        width = height * aspectRatio;
+                    } else {
+                        width = maxWidth;
+                        height = width / aspectRatio;
+                    }
+                }
+            }
+            
+            canvas.width = width;
+            canvas.height = height;
+            
+            // Update player position
+            if (player) {
+                player.x = Math.min(player.x, canvas.width - player.width);
+                player.y = canvas.height - 100;
+            }
+        }
         
         let gameState = 'start';
         let score = 0;
@@ -156,6 +224,16 @@
             maxHealth: 5,
             firepower: 1
         };
+        
+        // Detect mobile
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        if (isMobile) {
+            document.querySelector('.desktop-controls').style.display = 'none';
+            document.querySelector('.mobile-controls').style.display = 'inline';
+        }
+        
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
         
         let playerBullets = [];
         let enemyBullets = [];
@@ -224,6 +302,7 @@
         }
         
         const keys = {};
+        let touchX = null;
         
         document.addEventListener('keydown', (e) => {
             keys[e.code] = true;
@@ -231,6 +310,26 @@
         
         document.addEventListener('keyup', (e) => {
             keys[e.code] = false;
+        });
+        
+        // Touch controls
+        canvas.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            const touch = e.touches[0];
+            const rect = canvas.getBoundingClientRect();
+            touchX = (touch.clientX - rect.left) * (canvas.width / rect.width);
+        });
+        
+        canvas.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+            const touch = e.touches[0];
+            const rect = canvas.getBoundingClientRect();
+            touchX = (touch.clientX - rect.left) * (canvas.width / rect.width);
+        });
+        
+        canvas.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            touchX = null;
         });
         
         function shootPlayerBullet() {
@@ -305,8 +404,8 @@
                 speed: 0.5,
                 moveSpeed: 4,
                 verticalSpeed: 1.5,
-                health: 30,
-                maxHealth: 30,
+                health: 100,
+                maxHealth: 100,
                 shootTimer: 0
             };
             bossDirection = 1;
@@ -657,12 +756,24 @@
             gameTime += deltaTime / 1000;
             document.getElementById('time').textContent = Math.floor(gameTime);
             
-            // Player movement
+            // Player movement (keyboard)
             if (keys['ArrowLeft'] && player.x > 0) {
                 player.x -= player.speed;
             }
             if (keys['ArrowRight'] && player.x < canvas.width - player.width) {
                 player.x += player.speed;
+            }
+            
+            // Player movement (touch)
+            if (touchX !== null) {
+                const targetX = touchX - player.width / 2;
+                const diff = targetX - player.x;
+                if (Math.abs(diff) > player.speed) {
+                    player.x += Math.sign(diff) * player.speed;
+                } else {
+                    player.x = targetX;
+                }
+                player.x = Math.max(0, Math.min(canvas.width - player.width, player.x));
             }
             
             // Auto-shoot
@@ -854,7 +965,7 @@
             }
             
             // Spawn boss
-            if (gameTime >= 30 && !boss && !bossDefeated) {
+            if (gameTime >= 60 && !boss && !bossDefeated) {
                 createBoss();
                 enemies = [];
             }
